@@ -1,0 +1,21 @@
+{
+  "name": "anime-generator-web",
+  "version": "1.0.0",
+  "description": "闭环生成控制框架 - 可视化推理界面",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "axios": "^1.6.7",
+    "echarts": "^5.5.0",
+    "vue-echarts": "^6.6.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.1.4"
+  }
+}

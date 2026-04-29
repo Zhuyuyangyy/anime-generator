@@ -1,6 +1,8 @@
-# 基于特征反馈闭环控制的二次元角色生成系统
+# Anime Generator - 闭环生成控制框架
 
-> **核心定位**：不是 AI 出图工具，而是带反馈控制的生成调度系统
+> **不是做 SD 工作流，而是做"带状态反馈的流水线系统"**
+
+核心定位：
 
 ```
 一句话给工程团队：
@@ -14,172 +16,126 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      用户输入层                              │
-│              { gender/hair/style/outfit/pose }              │
+│                     用户/UI 层                              │
+│              Web界面 / API / 命令行                         │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  1️⃣ 参数结构化模块 (Param Encoder)                          │
-│  把"人类需求" → "机器向量 Z"                               │
-│  Z = { semantic_vec, style_vec, pose_vec }                 │
+│  1️⃣ 参数结构化 (encoder)                                    │
+│  输入JSON → Z = { semantic, weights }                      │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  2️⃣ Prompt映射引擎 (Prompt Engine)  ⭐专利点之一              │
-│  Z → 映射矩阵 M → Prompt + Negative Prompt                │
-│  片段库 + 权重系统                                          │
+│  2️⃣ Prompt映射引擎 (prompt_engine)  ⭐专利点               │
+│  Z → (prompt, negative_prompt, params)                     │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  3️⃣ 工作流调度引擎 (DAG Engine)                            │
-│  动态节点选择 + 条件分支 + 回溯机制                         │
-│  基础流程：草图 → 线稿 → 上色 → 精修                        │
+│  3️⃣ 图像生成器 (generator)                                  │
+│  prompt → 图像 (SD / Mock)                                 │
 └──────────────────────────┬──────────────────────────────────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  4️⃣ 特征评估模块 (Critic/Evaluator)   ⭐核心                 │
-│  生成图像 → CLIP相似度评分                                 │
-│  score = cosine(img_vec, target_vec)                       │
-│  if score < 0.85: trigger_feedback()                        │
+│  4️⃣ 特征评估器 (evaluator)  ⭐核心                          │
+│  图像 → CLIP评分 → score + breakdown                       │
+│  if score >= 0.85: ✅ 达标 → 输出                          │
 └──────────────────────────┬──────────────────────────────────┘
+                           │
+                    ┌──────┴──────┐
+                    │ score < 0.85 │
+                    └──────┬──────┘
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  5️⃣ 反馈控制模块 (Feedback Controller)  ⭐专利核心           │
-│  if score < threshold: adjust(Z) → rerun()                 │
-│  参数修正策略：提升权重 / 调整CFG / 固定seed               │
+│  5️⃣ 反馈控制器 (controller)  ⭐专利核心                     │
+│  分析breakdown → 定位最低分维度 → 单维权重调整              │
+│  Z' = adjust(Z, worst_dimension) → 返回第2步重新生成       │
 └──────────────────────────┬──────────────────────────────────┘
-                           ▼
-                      [ 达标? ]
-                         ↙    ↘
-                       是        否 → 继续循环
-                         ↘    ↙
-                      输出结果
+                           │
+                      [ 闭环迭代 ]
 ```
 
 ---
 
-## 📂 项目结构
+## 🚀 快速启动
 
-```
-anime-generator/
-├── encoder/              # 参数结构化模块
-│   └── param_encoder.py  # 标签字典 + one-hot映射 + 权重
-├── prompt_engine/        # Prompt映射引擎（专利点）
-│   └── prompt_engine.py # 片段库 + 权重调整 + 映射矩阵
-├── workflow/             # DAG工作流调度引擎
-│   └── dag_engine.py    # 节点编排 + 条件分支 + 回溯
-├── evaluator/            # 特征评估模块（CLIP评分）
-│   └── clip_evaluator.py # CLIP相似度 + 阈值判断
-├── controller/           # 反馈控制模块（核心创新）
-│   └── feedback_controller.py # 调整策略 + 历史记录
-├── multi_view/           # 多视图一致性模块
-│   └── multi_view.py    # 共享seed + latent控制
-├── logs/                 # 日志目录（专利/论文证据）
-│   ├── generation_log_*.jsonl
-│   ├── feedback_history.json
-│   └── system_events.jsonl
-├── docs/                 # 架构文档
-├── main.py              # 主入口 + 核心类
-└── README.md
-```
-
----
-
-## 🚀 Phase 开发阶段规划
-
-### Phase 1（第1-2周）MVP版本
-
-**目标**：跑通完整闭环
-
-| 模块 | 任务 | 状态 |
-|------|------|------|
-| Param Encoder | 标签字典 + one-hot编码 | ✅ |
-| Prompt Engine | 片段库 + 权重映射 | ✅ |
-| SD调用 | 模拟SD生成（可替换真实） | ✅ |
-| CLIP Evaluator | CLIP评分 + 阈值判断 | ✅ |
-| Feedback Controller | 简单重跑逻辑 | ✅ |
-| 日志记录 | 生成日志 + 反馈历史 | ✅ |
-
-**成果**：能自动"生成 → 不满意 → 重试"
-
-### Phase 2（第2-4周）闭环强化
-
-- DAG调度（简单版）
-- 多节点流程
-- 自动参数调整（权重提升）
-
-**成果**：不用人干预能出稳定结果
-
-### Phase 3（第4-8周）专利级实现
-
-- 特征向量驱动调度
-- 参数方向优化（差异向量）
-- 多视图一致性
-
-**成果**：论文/专利/答辩级系统
-
----
-
-## 📊 验证指标（可专利证明）
-
-| 指标 | 方法 |
-|------|------|
-| 一致性 | CLIP相似度 |
-| 稳定性 | 方差 |
-| 自动化率 | 无人工比例 |
-| 重跑率 | 触发反馈次数 |
-
----
-
-## 🔧 快速启动
-
+### Web 界面（推荐）
 ```bash
-cd D:\ZYY Project\anime-generator
-
-# 安装依赖（实际需要）
-pip install torch transformers diffusers pillow numpy
-
-# 运行测试
-python main.py
+cd web
+start.bat
 ```
-
----
-
-## 🧪 测试结果
-
-```
-=== 单次生成（无反馈）===
-  图像: [SD Image: seed=xxx]
-  评分: 0.xxxx
-
-=== 反馈闭环生成（自动修正）===
-  最终评分: 0.xxxx
-  迭代次数: N
-  是否达标: ✅ / ❌
-
-=== 多视角一致性 ===
-  front: [SD Image]
-  side: [SD Image]
-  back: [SD Image]
-```
+浏览器打开 http://localhost:5175
 
 ---
 
 ## 🔑 核心创新点
 
-### 1. Prompt映射引擎（专利点）
-- 不是简单拼接，而是通过映射矩阵 M 智能组合
-- 权重系统：hair:1.5, eye:1.3, outfit:1.4
+### 1. 单维反馈调整（专利核心）
+```python
+# 不是全量重置，而是定位最低分维度
+worst_key = min(breakdown, key=breakdown.get)  # hair=0.72
+Z' = adjust(Z, {worst_key: weight + 0.3})       # 只强化 hair
+```
 
-### 2. 反馈控制（专利核心）
-- 不是单次出图，而是"生成→评估→修正→再生成"
-- 多种调整策略：权重提升、CFG调整、seed重置
+### 2. 收敛式生成
+```
+第0轮: score=0.65 ❌ → 强化 hair
+第1轮: score=0.72 ❌ → 强化 eye
+第2轮: score=0.81 ❌ → 强化 outfit
+第3轮: score=0.89 ✅ 达标
+```
 
-### 3. 完整日志（证据链）
-- 每次迭代都有记录：score_before → score_after
-- 这是专利/论文的法律证据
+### 3. 完整日志证据链（专利/论文铁证）
+```json
+{"iteration": 0, "score_before": 0.65, "score_after": 0.72, 
+ "action": "increase_hair_weight", "adjustment": {"hair": 1.3}}
+```
+
+---
+
+## 🛠 技术栈
+
+**后端**: Python 3.9+ / FastAPI / uvicorn
+**前端**: Vue 3 + Vite + ECharts
+**AI**: PyTorch + transformers (CLIP) + diffusers (SD)
+
+---
+
+## 📁 项目结构
+
+```
+anime-generator/
+├── pipeline/              # 核心闭环（可直接运行）
+│   ├── encoder.py         # 参数结构化
+│   ├── prompt_engine.py   # Prompt 映射
+│   ├── generator.py       # 图像生成
+│   ├── evaluator.py       # CLIP 评估
+│   ├── controller.py      # 反馈控制
+│   ├── logger.py          # 日志系统
+│   └── main.py            # 闭环主循环
+├── web/                   # Web 可视化界面
+│   ├── index.html         # Vue3 单文件应用
+│   ├── api_server.py      # FastAPI 后端
+│   ├── vite.config.js
+│   ├── package.json
+│   └── start.bat          # 一键启动
+├── framework/             # 填空版框架
+├── docs/                  # 文档
+│   ├── OPENCLAW_TASKS.md
+│   └── TASK_SPLIT.md
+└── main.py                # 完整版参考
+```
+
+---
+
+## 📊 验证指标
+
+| 指标 | 说明 |
+|------|------|
+| Pass@k | k 次尝试内达到阈值的成功率 |
+| 收敛率 | 3 轮内达标的比例 |
+| 平均提升 | 每轮迭代的平均分数增幅 |
 
 ---
 
 *Created: 2026-04-29*
-*定位：可演示Demo + 专利支撑系统 + 论文工程基础*
+*定位：可演示 Demo + 专利支撑系统 + 论文工程基础*

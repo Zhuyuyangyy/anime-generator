@@ -1,0 +1,971 @@
+<template>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <h1>🎯 闭环生成控制系统</h1>
+      <p class="subtitle">Closed-Loop Generative Optimization Framework</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Left Panel: Parameter Input -->
+      <section class="panel params-panel">
+        <h2>📥 生成参数</h2>
+        
+        <div class="param-grid">
+          <div class="param-group">
+            <label>性别</label>
+            <select v-model="params.gender">
+              <option value="female">女 (Female)</option>
+              <option value="male">男 (Male)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>发色</label>
+            <select v-model="params.hair">
+              <option value="silver">银发 (Silver)</option>
+              <option value="black">黑发 (Black)</option>
+              <option value="blonde">金发 (Blonde)</option>
+              <option value="blue">蓝发 (Blue)</option>
+              <option value="red">红发 (Red)</option>
+              <option value="pink">粉发 (Pink)</option>
+              <option value="purple">紫发 (Purple)</option>
+              <option value="white">白发 (White)</option>
+              <option value="green">绿发 (Green)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>发型</label>
+            <select v-model="params.hair_length">
+              <option value="short">短发 (Short)</option>
+              <option value="medium">中发 (Medium)</option>
+              <option value="long">长发 (Long)</option>
+              <option value="very_long">超长发 (Very Long)</option>
+              <option value="twintails">双马尾 (Twintails)</option>
+              <option value="ponytail">马尾 (Ponytail)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>瞳色</label>
+            <select v-model="params.eye_color">
+              <option value="red">红瞳 (Red)</option>
+              <option value="blue">蓝瞳 (Blue)</option>
+              <option value="green">绿瞳 (Green)</option>
+              <option value="purple">紫瞳 (Purple)</option>
+              <option value="yellow">黄瞳 (Yellow)</option>
+              <option value="gold">金瞳 (Gold)</option>
+              <option value="pink">粉瞳 (Pink)</option>
+              <option value="heterochromia">异瞳 (Heterochromia)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>风格</label>
+            <select v-model="params.style">
+              <option value="anime">动漫 (Anime)</option>
+              <option value="semi-realistic">半写实 (Semi-Realistic)</option>
+              <option value="chibi">Q版 (Chibi)</option>
+              <option value="realistic">写实 (Realistic)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>服装</label>
+            <select v-model="params.outfit">
+              <option value="armor">盔甲 (Armor)</option>
+              <option value="casual">休闲 (Casual)</option>
+              <option value="maid">女仆 (Maid)</option>
+              <option value="school">校服 (School)</option>
+              <option value="fantasy">奇幻 (Fantasy)</option>
+              <option value="dress">礼服 (Dress)</option>
+              <option value="kimono">和服 (Kimono)</option>
+              <option value="hoodie">卫衣 (Hoodie)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>姿态</label>
+            <select v-model="params.pose">
+              <option value="standing">站立 (Standing)</option>
+              <option value="sitting">坐姿 (Sitting)</option>
+              <option value="walking">行走 (Walking)</option>
+              <option value="fighting">战斗 (Fighting)</option>
+              <option value="looking_back">回眸 (Looking Back)</option>
+            </select>
+          </div>
+
+          <div class="param-group">
+            <label>表情</label>
+            <select v-model="params.expression">
+              <option value="happy">开心 (Happy)</option>
+              <option value="serious">严肃 (Serious)</option>
+              <option value="sad">悲伤 (Sad)</option>
+              <option value="angry">愤怒 (Angry)</option>
+              <option value="surprised">惊讶 (Surprised)</option>
+              <option value="smug">得意 (Smug)</option>
+              <option value="neutral">平静 (Neutral)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Threshold -->
+        <div class="param-group full-width">
+          <label>评分阈值: {{ params.threshold }}</label>
+          <input type="range" v-model.number="params.threshold" min="0.5" max="0.99" step="0.01" />
+        </div>
+
+        <!-- Generate Button -->
+        <button class="btn-generate" @click="startGeneration" :disabled="isGenerating">
+          {{ isGenerating ? '🔄 生成中...' : '🚀 开始生成' }}
+        </button>
+
+        <!-- Batch Generate -->
+        <button class="btn-batch" @click="startBatchGeneration" :disabled="isGenerating">
+          📦 批量生成 (×10)
+        </button>
+      </section>
+
+      <!-- Middle Panel: Iteration History -->
+      <section class="panel history-panel">
+        <h2>🔄 生成过程</h2>
+        
+        <div v-if="!isGenerating && iterations.length === 0" class="empty-state">
+          <p>⬆️ 左侧输入参数，点击"开始生成"</p>
+          <p class="hint">系统会自动评估并修正，直到达标</p>
+        </div>
+
+        <!-- Iteration Steps -->
+        <div v-else class="iteration-list">
+          <div 
+            v-for="(iter, idx) in iterations" 
+            :key="idx"
+            class="iteration-item"
+            :class="{ 
+              'current': idx === iterations.length - 1 && isGenerating,
+              'passed': iter.passed,
+              'failed': !iter.passed && !isGenerating
+            }"
+          >
+            <div class="iter-header">
+              <span class="iter-badge">{{ idx === 0 ? '初始' : `调整${idx}` }}</span>
+              <span class="iter-score" :class="{ 'good': iter.score >= params.threshold }">
+                {{ iter.score.toFixed(4) }}
+              </span>
+              <span v-if="iter.passed" class="iter-status passed">✅ 达标</span>
+              <span v-else-if="idx === iterations.length - 1 && !isGenerating" class="iter-status failed">
+                {{ iterations.length >= maxIterations ? '⚠️ 达上限' : '❌ 未达标' }}
+              </span>
+            </div>
+
+            <!-- Breakdown Scores -->
+            <div class="breakdown">
+              <div 
+                v-for="(score, key) in iter.breakdown" 
+                :key="key"
+                class="breakdown-item"
+                :class="{ 'low': score < params.threshold }"
+              >
+                <span class="breakdown-key">{{ key }}</span>
+                <div class="breakdown-bar">
+                  <div class="breakdown-fill" :style="{ width: (score * 100) + '%' }"></div>
+                </div>
+                <span class="breakdown-val">{{ score.toFixed(3) }}</span>
+              </div>
+            </div>
+
+            <!-- Prompt Changes -->
+            <div v-if="iter.promptAdjustment" class="prompt-change">
+              <div class="prompt-label">Prompt 修正:</div>
+              <div class="prompt-diff">
+                <div class="prompt-before">- {{ iter.promptAdjustment.before }}</div>
+                <div class="prompt-after">+ {{ iter.promptAdjustment.after }}</div>
+              </div>
+            </div>
+
+            <!-- Weight Changes -->
+            <div v-if="iter.weightChanges" class="weight-changes">
+              <span v-for="(val, key) in iter.weightChanges" :key="key" class="weight-tag">
+                {{ key }}: {{ val.toFixed(2) }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Loading Indicator -->
+          <div v-if="isGenerating" class="loading-item">
+            <span class="pulse">⏳</span> 生成中...
+          </div>
+        </div>
+
+        <!-- Final Result -->
+        <div v-if="finalResult" class="final-result">
+          <h3>🏁 最终结果</h3>
+          <div class="result-summary">
+            <span>最终分数: <strong>{{ finalResult.score.toFixed(4) }}</strong></span>
+            <span>迭代次数: <strong>{{ iterations.length }}</strong></span>
+            <span>状态: <strong :class="{ 'good': finalResult.score >= params.threshold }">
+              {{ finalResult.score >= params.threshold ? '✅ 达标' : '❌ 未达标' }}
+            </strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Score Chart -->
+      <section class="panel chart-panel">
+        <h2>📈 评分曲线</h2>
+        
+        <div v-if="iterations.length > 0" class="chart-container">
+          <div ref="chartRef" class="echarts-placeholder"></div>
+        </div>
+        <div v-else class="empty-state">
+          <p>生成后将显示评分曲线</p>
+        </div>
+
+        <!-- Statistics -->
+        <div v-if="iterations.length > 0" class="stats">
+          <h3>📊 统计</h3>
+          <div class="stat-grid">
+            <div class="stat-item">
+              <span class="stat-label">初始分数</span>
+              <span class="stat-value">{{ iterations[0]?.score.toFixed(4) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">最终分数</span>
+              <span class="stat-value">{{ iterations[iterations.length-1]?.score.toFixed(4) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">提升</span>
+              <span class="stat-value good">
+                +{{ (iterations[iterations.length-1]?.score - iterations[0]?.score).toFixed(4) }}
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">迭代次数</span>
+              <span class="stat-value">{{ iterations.length }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Batch Results Modal -->
+    <div v-if="showBatchModal" class="modal-overlay" @click.self="showBatchModal = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>📦 批量生成结果 ({{ batchResults.length }})</h2>
+          <button @click="showBatchModal = false">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="batch-grid">
+            <div v-for="(result, idx) in batchResults" :key="idx" class="batch-item">
+              <div class="batch-index">#{{ idx + 1 }}</div>
+              <div class="batch-score" :class="{ 'good': result.score >= params.threshold }">
+                {{ result.score.toFixed(4) }}
+              </div>
+              <div class="batch-params">
+                <span v-for="(val, key) in result.params" :key="key">
+                  {{ val }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, watch, nextTick } from 'vue'
+import * as echarts from 'echarts'
+
+// Config
+const maxIterations = 5
+
+// State
+const isGenerating = ref(false)
+const iterations = ref([])
+const finalResult = ref(null)
+const chartRef = ref(null)
+let chartInstance = null
+
+// Batch
+const showBatchModal = ref(false)
+const batchResults = ref([])
+
+// Parameters
+const params = reactive({
+  gender: 'female',
+  hair: 'silver',
+  hair_length: 'long',
+  eye_color: 'red',
+  style: 'anime',
+  outfit: 'armor',
+  pose: 'standing',
+  expression: 'serious',
+  threshold: 0.85
+})
+
+// Mock evaluation function
+function mockEvaluate(target, iteration) {
+  const scores = {}
+  const keys = ['hair', 'eye', 'style', 'outfit', 'pose']
+  
+  let baseScore = 0.65 + (iteration * 0.05) + Math.random() * 0.08
+  
+  for (const key of keys) {
+    const val = params[key]
+    const seed = (val.charCodeAt(0) * 100 + iteration * 10) % 100
+    scores[key] = Math.min(0.98, Math.max(0.5, baseScore + (Math.sin(seed) * 0.15)))
+  }
+  
+  const overall = Object.values(scores).reduce((a, b) => a + b, 0) / Object.values(scores).length
+  
+  return {
+    score: overall,
+    breakdown: Object.fromEntries(
+      Object.entries(scores).map(([k, v]) => [k, parseFloat(v.toFixed(3))])
+    ),
+    passed: overall >= params.threshold
+  }
+}
+
+// Simulate generation
+async function simulateGeneration() {
+  const currentParams = { ...params }
+  delete currentParams.threshold
+  
+  iterations.value = []
+  finalResult.value = null
+  
+  let currentScore = 0
+  let weights = { hair: 1.0, eye: 1.0, style: 1.0, outfit: 1.0, pose: 1.0 }
+  
+  for (let i = 0; i < maxIterations; i++) {
+    await new Promise(r => setTimeout(r, 800))
+    
+    const evalResult = mockEvaluate(currentParams, i)
+    currentScore = evalResult.score
+    
+    const iteration = {
+      score: currentScore,
+      breakdown: evalResult.breakdown,
+      passed: evalResult.passed,
+      promptAdjustment: null,
+      weightChanges: null
+    }
+    
+    // Simulate weight adjustment if not passed
+    if (!evalResult.passed && i < maxIterations - 1) {
+      // Find worst dimension
+      const worst = Object.entries(evalResult.breakdown)
+        .sort((a, b) => a[1] - b[1])[0]
+      
+      const adjustment = {}
+      adjustment[worst[0]] = weights[worst[0]] + 0.3
+      
+      weights = { ...weights, ...adjustment }
+      
+      iteration.weightChanges = adjustment
+      iteration.promptAdjustment = {
+        before: `(${worst[0]}:1.0)`,
+        after: `(${worst[0]}:${adjustment[worst[0]].toFixed(1)})`
+      }
+    }
+    
+    iterations.value.push(iteration)
+    updateChart()
+    
+    if (evalResult.passed) {
+      break
+    }
+  }
+  
+  finalResult.value = {
+    score: currentScore,
+    params: { ...currentParams }
+  }
+  
+  isGenerating.value = false
+}
+
+// Start generation
+function startGeneration() {
+  isGenerating.value = true
+  simulateGeneration()
+}
+
+// Start batch generation
+function startBatchGeneration() {
+  isGenerating.value = true
+  batchResults.value = []
+  
+  const runBatch = async () => {
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 500))
+      
+      // Randomize params slightly
+      const hairOptions = ['silver', 'black', 'blonde', 'blue', 'red', 'pink']
+      params.hair = hairOptions[Math.floor(Math.random() * hairOptions.length)]
+      
+      const evalResult = mockEvaluate(params, 0)
+      
+      batchResults.value.push({
+        score: evalResult.score,
+        params: { hair: params.hair, style: params.style, outfit: params.outfit }
+      })
+    }
+    
+    isGenerating.value = false
+    showBatchModal.value = true
+  }
+  
+  runBatch()
+}
+
+// Update chart
+function updateChart() {
+  nextTick(() => {
+    if (!chartRef.value) return
+    
+    if (!chartInstance) {
+      chartInstance = echarts.init(chartRef.value)
+    }
+    
+    const xData = iterations.value.map((_, i) => `第${i}轮`)
+    const scoreData = iterations.value.map(iter => iter.score)
+    const thresholdData = iterations.value.map(() => params.threshold)
+    
+    chartInstance.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: (p) => `${p[0].name}<br/>评分: ${p[0].value.toFixed(4)}`
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '10%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: xData,
+        boundaryGap: false
+      },
+      yAxis: {
+        type: 'value',
+        min: 0.5,
+        max: 1.0
+      },
+      series: [
+        {
+          name: '评分',
+          type: 'line',
+          data: scoreData,
+          smooth: true,
+          lineStyle: { width: 3 },
+          itemStyle: { color: '#4ecdc4' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(78, 205, 196, 0.4)' },
+              { offset: 1, color: 'rgba(78, 205, 196, 0.05)' }
+            ])
+          }
+        },
+        {
+          name: '阈值',
+          type: 'line',
+          data: thresholdData,
+          lineStyle: { width: 2, type: 'dashed' },
+          itemStyle: { color: '#ff6b6b' },
+          symbol: 'none'
+        }
+      ]
+    })
+  })
+}
+</script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f0f23;
+  color: #e0e0e0;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+  background: linear-gradient(90deg, #4ecdc4, #a855f7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 320px 1fr 360px;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.panel {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 1.25rem;
+  overflow-y: auto;
+  border: 1px solid #2a2a4a;
+}
+
+.panel h2 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #4ecdc4;
+  border-bottom: 1px solid #2a2a4a;
+  padding-bottom: 0.5rem;
+}
+
+/* Parameters Panel */
+.param-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.param-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.param-group.full-width {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+}
+
+.param-group label {
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.param-group select,
+.param-group input[type="range"] {
+  background: #0f0f23;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.param-group select:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+
+.btn-generate {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, #4ecdc4, #44a08d);
+  border: none;
+  border-radius: 8px;
+  color: #0f0f23;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.btn-generate:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-batch {
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  background: #2a2a4a;
+  border: none;
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.btn-batch:hover:not(:disabled) {
+  background: #3a3a5a;
+}
+
+/* History Panel */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #666;
+  text-align: center;
+}
+
+.empty-state .hint {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.iteration-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.iteration-item {
+  background: #0f0f23;
+  border-radius: 8px;
+  padding: 0.85rem;
+  border-left: 3px solid #4ecdc4;
+}
+
+.iteration-item.current {
+  border-left-color: #f59e0b;
+  animation: pulse-border 1.5s infinite;
+}
+
+.iteration-item.passed {
+  border-left-color: #22c55e;
+}
+
+.iteration-item.failed {
+  border-left-color: #ef4444;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-left-color: #f59e0b; }
+  50% { border-left-color: #fbbf24; }
+}
+
+.iter-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.iter-badge {
+  background: #2a2a4a;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+}
+
+.iter-score {
+  font-weight: 600;
+  color: #ef4444;
+}
+
+.iter-score.good {
+  color: #22c55e;
+}
+
+.iter-status {
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.5rem 0;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.breakdown-key {
+  width: 50px;
+  color: #888;
+}
+
+.breakdown-bar {
+  flex: 1;
+  height: 6px;
+  background: #2a2a4a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.breakdown-fill {
+  height: 100%;
+  background: #4ecdc4;
+  transition: width 0.3s;
+}
+
+.breakdown-item.low .breakdown-fill {
+  background: #ef4444;
+}
+
+.breakdown-val {
+  width: 35px;
+  text-align: right;
+  color: #aaa;
+}
+
+.prompt-change {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #2a2a4a;
+}
+
+.prompt-label {
+  font-size: 0.7rem;
+  color: #888;
+  margin-bottom: 0.25rem;
+}
+
+.prompt-diff {
+  font-size: 0.75rem;
+}
+
+.prompt-before {
+  color: #ef4444;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.prompt-after {
+  color: #22c55e;
+}
+
+.weight-changes {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.weight-tag {
+  background: #2a2a4a;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  color: #a855f7;
+}
+
+.loading-item {
+  text-align: center;
+  padding: 1rem;
+  color: #f59e0b;
+}
+
+.pulse {
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.final-result {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #0f0f23;
+  border-radius: 8px;
+  border: 1px solid #4ecdc4;
+}
+
+.final-result h3 {
+  font-size: 0.9rem;
+  color: #4ecdc4;
+  margin-bottom: 0.5rem;
+}
+
+.result-summary {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.result-summary strong {
+  color: #fff;
+}
+
+.result-summary strong.good {
+  color: #22c55e;
+}
+
+/* Chart Panel */
+.chart-container {
+  height: 250px;
+}
+
+.echarts-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.stats {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2a2a4a;
+}
+
+.stats h3 {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.stat-item {
+  background: #0f0f23;
+  padding: 0.5rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #666;
+}
+
+.stat-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.stat-value.good {
+  color: #22c55e;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #1a1a2e;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #2a2a4a;
+}
+
+.modal-header h2 {
+  font-size: 1rem;
+  color: #4ecdc4;
+  margin: 0;
+  border: none;
+  padding: 0;
+}
+
+.modal-header button {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: calc(80vh - 60px);
+}
+
+.batch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+}
+
+.batch-item {
+  background: #0f0f23;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.batch-index {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.batch-score {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ef4444;
+  margin: 0.25rem 0;
+}
+
+.batch-score.good {
+  color: #22c55e;
+}
+
+.batch-params {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  font-size: 0.65rem;
+  color: #888;
+}
+</style>
