@@ -1,0 +1,158 @@
+{
+  "summary": {
+    "config": {
+      "mode": "mock",
+      "samples": 3,
+      "max_iter": 5,
+      "threshold": 0.85,
+      "seed": 42
+    },
+    "convergence_rate": 100.0,
+    "avg_iterations": 3.67,
+    "median_iterations": 5.0,
+    "std_iterations": 1.89,
+    "avg_final_score": 0.8633,
+    "dim_avg_scores": {
+      "hair": 0.8347,
+      "eye": 0.6613,
+      "style": 0.684,
+      "outfit": 0.7417,
+      "pose": 0.928
+    },
+    "avg_scores_per_iter": [
+      0.7699,
+      0.7635,
+      0.7985,
+      0.8335,
+      0.8685
+    ],
+    "iter_distribution": {
+      "5": 2,
+      "1": 1
+    },
+    "total_time_seconds": 0.0
+  },
+  "per_sample": [
+    {
+      "sample_id": 0,
+      "converged": true,
+      "final_score": 0.8806,
+      "iterations": 5,
+      "scores_per_iteration": [
+        0.7406,
+        0.7756,
+        0.8106,
+        0.8456,
+        0.8806
+      ],
+      "breakdown_per_iteration": [
+        {
+          "hair": 0.77,
+          "eye": 0.608,
+          "style": 0.657,
+          "outfit": 0.752,
+          "pose": 0.916
+        },
+        {
+          "hair": 0.77,
+          "eye": 0.608,
+          "style": 0.657,
+          "outfit": 0.752,
+          "pose": 0.916
+        },
+        {
+          "hair": 0.77,
+          "eye": 0.608,
+          "style": 0.657,
+          "outfit": 0.752,
+          "pose": 0.916
+        },
+        {
+          "hair": 0.77,
+          "eye": 0.608,
+          "style": 0.657,
+          "outfit": 0.752,
+          "pose": 0.916
+        },
+        {
+          "hair": 0.77,
+          "eye": 0.608,
+          "style": 0.657,
+          "outfit": 0.752,
+          "pose": 0.916
+        }
+      ],
+      "execution_time": 0.0002503395080566406
+    },
+    {
+      "sample_id": 1,
+      "converged": true,
+      "final_score": 0.8564,
+      "iterations": 5,
+      "scores_per_iteration": [
+        0.7164,
+        0.7514,
+        0.7864,
+        0.8214,
+        0.8564
+      ],
+      "breakdown_per_iteration": [
+        {
+          "hair": 0.786,
+          "eye": 0.635,
+          "style": 0.61,
+          "outfit": 0.604,
+          "pose": 0.947
+        },
+        {
+          "hair": 0.786,
+          "eye": 0.635,
+          "style": 0.61,
+          "outfit": 0.604,
+          "pose": 0.947
+        },
+        {
+          "hair": 0.786,
+          "eye": 0.635,
+          "style": 0.61,
+          "outfit": 0.604,
+          "pose": 0.947
+        },
+        {
+          "hair": 0.786,
+          "eye": 0.635,
+          "style": 0.61,
+          "outfit": 0.604,
+          "pose": 0.947
+        },
+        {
+          "hair": 0.786,
+          "eye": 0.635,
+          "style": 0.61,
+          "outfit": 0.604,
+          "pose": 0.947
+        }
+      ],
+      "execution_time": 0.00015997886657714844
+    },
+    {
+      "sample_id": 2,
+      "converged": true,
+      "final_score": 0.8528,
+      "iterations": 1,
+      "scores_per_iteration": [
+        0.8528
+      ],
+      "breakdown_per_iteration": [
+        {
+          "hair": 0.948,
+          "eye": 0.741,
+          "style": 0.785,
+          "outfit": 0.869,
+          "pose": 0.921
+        }
+      ],
+      "execution_time": 0.00011396408081054688
+    }
+  ]
+}

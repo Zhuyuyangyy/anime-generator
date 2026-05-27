@@ -1,0 +1,4 @@
+sample_id,converged,final_score,iterations,iter1,iter2,iter3,iter4,iter5
+0,True,0.8806,5,0.7406,0.7756,0.8106,0.8456,0.8806
+1,True,0.8564,5,0.7164,0.7514,0.7864,0.8214,0.8564
+2,True,0.8528,1,0.8528,,,,
